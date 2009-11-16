@@ -54,3 +54,54 @@
   (val     :uchar)
   (timeout :pointer))                   ;struct timeval *
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%read-status-lines "ieee1284_read_status") ieee1284_status_bits
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%wait-status-lines "ieee1284_wait_status") e1284
+  (parport :pointer)                    ;struct parport *
+  (mask    :uchar)
+  (val     :uchar)
+  (timeout :pointer))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%read-control-lines "ieee1284_read_control") ieee1284_control_bits
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%write-control-lines "ieee1284_write_control") :void
+  (parport  :pointer)                   ;struct parport *
+  (controll :uchar))                   
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%frob-control-lines "ieee1284_frob_control") :void
+  (parport :pointer)                    ;struct parport *
+  (mask    :uchar)
+  (val     :uchar))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%do-nack-handshake "ieee1284_do_nack_handshake") e1284
+  (parport         :pointer)            ;struct parport *
+  (controll-before :uchar)
+  (controll-after  :uchar)
+  (timeout         :pointer))           ;struct timeval *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%negotiate "ieee1284_negotiate") e1284
+  (parport :pointer)                    ;struct parport *
+  (mode    ieee1284_modes))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%terminate "ieee1284_terminate") :void
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%ecp-forward-to-reverse "ieee1284_ecp_fwd_to_rev") e1284
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%ecp-reverse-to-forward "ieee1284_ecp_rev_to_fwd") e1284
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%get-irq-id "ieee1284_get_irq_fd") :int
+  (parport :pointer))                   ;struct parport *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%clear-irq-id "ieee1284_clear_irq") e1284
+  (parport :pointer)                    ;struct parport *
+  (count :pointer))                     ;unsigned int *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%set-timeout "ieee1284_set_timeout") :pointer
+  (parport :pointer)                    ;struct parport *
+  (timeout :pointer))                   ;struct timeval *
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

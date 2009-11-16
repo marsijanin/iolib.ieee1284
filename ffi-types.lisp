@@ -74,3 +74,67 @@
        ((:dma    "CAP1284_DMA")
         :documentation "A DMA channel is configured for this port.)"))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(cenum (ieee1284_status_bits :define-constants t)
+       ((:nfault   "S1284_NFAULT"))
+       ((:select   "S1284_SELECT"))
+       ((:perror   "S1284_PERROR"))
+       ((:nack     "S1284_NACK"))
+       ((:busy     "S1284_BUSY"))
+       ((:inverted "S1284_INVERTED")))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(cenum (ieee1284_control_bits :define-constants t)
+       ((:nstrobe   "C1284_NSTROBE"))
+       ((:nautofd   "C1284_NAUTOFD"))
+       ((:ninit     "C1284_NINIT"))
+       ((:nselectin "C1284_NSELECTIN"))
+       ((:inverted  "C1284_INVERTED")))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(cenum (ieee1284_modes :define-constants t)
+      ((:nibble           "M1284_NIBBLE")
+       :documentation
+       "Nibble mode. This peripheral-to-host mode uses the status lines
+        to read data from the peripheral four bits at a time.")
+      ((:byte             "M1284_BYTE")
+       :documentation
+       "Byte mode. This peripheral-to-host mode uses the data lines in reverse
+         mode to read data from the peripheral a byte at a time.")
+      ((:compat           "M1284_COMPAT")
+       :documentation
+       "Compatibility mode. Normal printer protocol. This is not a
+        negotiated mode, but is the default mode in absence of
+        negotiation.  ieee1284_negotiate(port, M1284_COMPAT) is
+        equivalent to ieee1284_terminate(port). This
+        host-to-peripheral mode is used for sending data to printers,
+        and is historically the mode that has been used for that
+        before IEEE 1284.")
+      ((:becp             "M1284_BECP")
+       :documentation
+       "Bounded ECP is a modification to ECP that makes it more robust
+        at the point that the direction is changed. (Unfortunately it is not
+        yet implemented in the Linux kernel driver.)")
+      ((:ecp              "M1284_ECP")
+       :documentation
+       "ECP mode. On entry to ECP mode it is a host-to-peripheral
+        (i.e. forward) mode, but it may be set to reverse mode using
+        ieee1284_ecp_fwd_to_rev(3). It is common for PC hardware to provide
+        assistance with this mode by the use of a FIFO which the host (or, in
+        reverse mode, the peripheral) may fill, so that the hardware can do
+        the handshaking itself.")
+      ((:ecprle           "M1284_ECPRLE")
+       :documentation
+       "ECP with run length encoding. In this mode, consecutive data bytes
+        of the same value may be transferred in only a few cycles.")
+      ((:ecpswe           "M1284_ECPSWE"))
+      ((:epp              "M1284_EPP")
+       :documentation
+       "EPP mode. In this bi-directional mode the direction of data transfer
+        is signalled at each byte.")
+      ((:eppsl            "M1284_EPPSL"))
+      ((:eppswe           "M1284_EPPSWE"))
+      ((:flag-device-id   "M1284_FLAG_DEVICEID")
+       :documentation
+       "Device ID retrieval. This flag may be combined with a nibble, byte,
+        or ECP mode to notify the device that it should send its IEEE 1284
+        Device ID when asked for data.")
+      ((:flage-ext-link "M1284_FLAG_EXT_LINK")))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
