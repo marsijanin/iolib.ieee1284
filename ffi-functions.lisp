@@ -54,8 +54,14 @@
   (val     :uchar)
   (timeout :pointer))                   ;struct timeval *
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcfun* (%read-status-lines "ieee1284_read_status") ieee1284_status_bits
+;; ieee1284_status/control_bits do not cover all 255 values and
+;; `foreign-enum-keyword' can signal an error in raw mode.
+(defcfun* (%%read-status-lines "ieee1284_read_status") :int
   (parport :pointer))                   ;struct parport *
+(defentrypoint %read-status-lines (pointer)
+  (let ((status (%%read-status-lines pointer)))
+    (or (foreign-enum-keyword 'ieee1284_status_bits status :errorp nil)
+        status)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcfun* (%wait-status-lines "ieee1284_wait_status") e1284
   (parport :pointer)                    ;struct parport *
@@ -63,8 +69,12 @@
   (val     :uchar)
   (timeout :pointer))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcfun* (%read-control-lines "ieee1284_read_control") ieee1284_control_bits
+(defcfun* (%%read-control-lines "ieee1284_read_control") :int
   (parport :pointer))                   ;struct parport *
+(defentrypoint %read-control-lines (pointer)
+  (let ((control (%%read-control-lines pointer)))
+    (or (foreign-enum-keyword 'ieee1284_control_bits control :errorp nil)
+        control)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcfun* (%write-control-lines "ieee1284_write_control") :void
   (parport  :pointer)                   ;struct parport *

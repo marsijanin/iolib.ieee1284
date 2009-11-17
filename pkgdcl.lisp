@@ -7,7 +7,8 @@
 (defpackage :iolib.ieee1284
   (:nicknames #:coffe)
   (:use :common-lisp :cffi)
-  (:import-from :iolib.syscalls :defcfun* :size-t)
+  (:import-from :iolib.syscalls :defcfun* :defentrypoint :size-t)
+  (:import-from :alexandria :with-unique-names)
   (:export
    #:parallel-port
    #:parallel-port-base-address
