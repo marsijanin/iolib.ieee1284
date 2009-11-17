@@ -143,3 +143,30 @@
       (%release ptr)
       (%close ptr))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun bit-vector->ub8 (bit-vector)
+  (loop
+     :with int := #b00000000
+     :for bit :across bit-vector
+     :for i :below (min 8 (length bit-vector))
+     :do (setf (ldb (byte 1 i) int) bit)
+     :finally (return int)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun ub8->bit-vector (ub8)
+  (loop
+     :with bit-vector := (make-array 8 :element-type 'bit)
+     :for  i :below (min 8 (integer-length ub8)) 
+     :do (setf (aref bit-vector i) (ldb (byte 1 i) ub8))
+     :finally (return bit-vector)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun read-data-lines (parallel-port &optional numberp)
+  (let ((data (%read-data-lines (parport-ptr parallel-port))))
+    (if numberp data (ub8->bit-vector data))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun read-control-lines (parallel-port &optional numberp)
+  (let ((control (%%read-control-lines (parport-ptr parallel-port))))
+    (if numberp control (ub8->bit-vector control))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun read-status-lines (parallel-port &optional numberp)
+  (let ((status (%read-status-lines (parport-ptr parallel-port))))
+    (if numberp status (ub8->bit-vector status))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
