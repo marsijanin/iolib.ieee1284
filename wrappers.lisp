@@ -170,3 +170,8 @@
   (let ((status (%read-status-lines (parport-ptr parallel-port))))
     (if numberp status (ub8->bit-vector status))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun read-lines (parallel-port)
+  (list (read-data-lines parallel-port)
+        (read-status-lines parallel-port)
+        (read-control-lines parallel-port)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
