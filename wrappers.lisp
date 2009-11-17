@@ -14,40 +14,47 @@
             (parallel-port-base-address parport))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defclass existing-paralel-port (parallel-port)
-  ((index                :reader parallel-port-index :type fixnum
-                         :initform 0 :initarg :index)
-   (capabilities-pointer :accessor parallel-port-capabilities-pointer)
-   (parport-pointer      :reader   parallel-port-parport-pointer
-                         :initarg  :parport-pointer)))
+  ((index                 :reader parallel-port-index :type fixnum
+                          :initform 0 :initarg :index)
+   (capabilities-pointer  :accessor parallel-port-capabilities-pointer)
+   (parport-pointer       :reader   parallel-port-parport-pointer
+                          :initarg  :parport-pointer)
+   (parports-pointer      :reader   parallel-port-parports-pointer
+                          :allocation :class :initarg :parports-pointer)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod shared-initialize :after ((parport existing-paralel-port) slot-names
                                      &rest initargs &key pointer)
   (declare (ignorable initargs pointer slot-names))
   (let ((ptr (foreign-alloc :int)))
     (setf (parallel-port-capabilities-pointer parport) ptr)
-    (trivial-garbage:finalize parport #'(lambda () (foreign-free ptr)))))
+    (trivial-garbage:finalize parport #'(lambda () (foreign-free ptr)))
+    (when (slot-boundp parport 'parports-pointer)
+      (with-slots (parports-pointer) parport
+        (trivial-garbage:finalize parport
+                                  #'(lambda ()
+                                      (%free-ports parports-pointer)
+                                      (foreign-free parports-pointer)))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *parallel-ports* nil "List of all avaliable parallel ports")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ieee1284_open need struct parport from struct parport_list
 ;; i.e. if we create struct parport instance, setup base_addr etc.
 ;; and pass pointer to ieee1284_open it will case segfault or another error
-(defparameter *pointers-to-parports* nil "struct parport_list instance.")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun find-parallel-ports ()
   "Setf `*parallel-ports*' to the list of avaliable parallel ports
    if cat find some and return it."
   (labels
-      ((avaliable-parports-list ()
-         (if *pointers-to-parports*
+      ((avaliable-parports-list (pointers-to-parports)
+         (if pointers-to-parports
              ;; not first call - ned to clean up
-             (%free-ports *pointers-to-parports*)
+             (%free-ports pointers-to-parports)
              ;; first call - need to allocate memory first
-             (setf *pointers-to-parports*
+             (setf pointers-to-parports
                    (foreign-alloc 'pointers-to-parports)))
-         (when (eql (%find-ports *pointers-to-parports* 0) :ok)
+         (when (eql (%find-ports pointers-to-parports 0) :ok)
            (with-foreign-slots ((portc portv)
-                                *pointers-to-parports*
+                                pointers-to-parports
                                 pointers-to-parports)
              (loop
                 :for i :below portc 
@@ -56,10 +63,13 @@
                 :collect (make-instance 'existing-paralel-port
                                         :pointer ptr
                                         :parport-pointer ptr
+                                        :parports-pointer pointers-to-parports
                                         :index i) :into parports
                 :finally (when parports
                           (return parports)))))))
-    (let ((avaliable-parports (avaliable-parports-list)))
+    (let* ((ptr (when *parallel-ports*
+                  (parallel-port-parports-pointer (car *parallel-ports*))))
+           (avaliable-parports (avaliable-parports-list ptr)))
       (when avaliable-parports
         (setf *parallel-ports* avaliable-parports)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
