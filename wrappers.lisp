@@ -16,7 +16,9 @@
 (defclass existing-paralel-port (parallel-port)
   ((index                :reader parallel-port-index :type fixnum
                          :initform 0 :initarg :index)
-   (capabilities-pointer :accessor parallel-port-capabilities-pointer)))
+   (capabilities-pointer :accessor parallel-port-capabilities-pointer)
+   (parport-pointer      :reader   parallel-port-parport-pointer
+                         :initarg  :parport-pointer)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmethod shared-initialize :after ((parport existing-paralel-port) slot-names
                                      &rest initargs &key pointer)
@@ -48,12 +50,13 @@
                                 *pointers-to-parports*
                                 pointers-to-parports)
              (loop
-                :for i :below portc :collect
+                :for i :below portc 
                 ;; `:pointer' in mem-aref is `type' parameter value
-                (make-instance 'existing-paralel-port
-                               :pointer (mem-aref portv :pointer i)
-                               :index i)
-                :into parports
+                :for ptr := (mem-aref portv :pointer i)
+                :collect (make-instance 'existing-paralel-port
+                                        :pointer ptr
+                                        :parport-pointer ptr
+                                        :index i) :into parports
                 :finally (when parports
                           (return parports)))))))
     (let ((avaliable-parports (avaliable-parports-list)))
@@ -61,6 +64,9 @@
         (setf *parallel-ports* avaliable-parports)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun name-or-base->parallel-port (name-or-base)
+  "Return corresponding `parallel-port' instance from `*parallel-ports*'
+   list or nil. `name-or-base' can be parallel port (file)name
+   (i.e. \"parport0\" or \"/dev/parport0\"), or base address (i.e. #x378) "
   (labels
       ((name-pos (name)
          (find-if #'(lambda (x)
@@ -85,6 +91,16 @@
          "You should specify parallel port (file)name or base address")))
      name-or-base)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun parport (thing)
+  (if (typep thing 'existing-paralel-port)
+      thing
+      (name-or-base->parallel-port thing)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun parport-ptr (parallel-port-or-name-or-base)
+  "Return pointer to corresponding struct parport or nil."
+  (let ((parport (parport parallel-port-or-name-or-base)))
+    (when parport (parallel-port-parport-pointer parport))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun open-parallel-port (parallel-port &key (flags :excl) capabilities)
   "Lispish ieee1284_open & ieee1284_claim wrapper.
    `parallel-port' can be: parallel port (file)name, base address or
@@ -94,9 +110,7 @@
   
    Example:
    (open-parallel-port (car *parallel-ports*) :capabilities '(:raw))"
-  (let ((parport (if (typep parallel-port 'existing-paralel-port)
-                     parallel-port
-                     (name-or-base->parallel-port parallel-port))))
+  (let ((parport (parport parallel-port)))
     (when parport
       (with-accessors ((idx parallel-port-index)
                        (cap parallel-port-capabilities-pointer)) parport
@@ -107,21 +121,15 @@
                                    (foreign-enum-value 'ieee1284_capabilities
                                                        x))
                                capabilities))))
-        (with-foreign-slots ((portv) *pointers-to-parports*
-                             pointers-to-parports)
-          (let ((ptr (mem-aref portv :pointer idx)))
-            (%open ptr flags (if capabilities cap (null-pointer)))
-            (%claim ptr)))))))
+        (let ((ptr (parport-ptr parport)))
+          (%open ptr flags (if capabilities cap (null-pointer)))
+          (%claim ptr))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun close-parallel-port (parallel-port)
   "Release and close `parallel-port' (`*parallel-ports*' element, (file)name
    or base address) opened by `open-parallel-port'"
-  (let ((parport (if (typep parallel-port 'existing-paralel-port)
-                     parallel-port
-                     (name-or-base->parallel-port parallel-port))))
-    (when parport
-      (with-foreign-slots ((portv) *pointers-to-parports* pointers-to-parports)
-        (let ((ptr (mem-aref portv :pointer (parallel-port-index parport))))
-          (%release ptr)
-          (%close ptr))))))
+  (let ((ptr (parport-ptr parallel-port)))
+    (when ptr
+      (%release ptr)
+      (%close ptr))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
