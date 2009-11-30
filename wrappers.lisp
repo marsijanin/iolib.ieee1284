@@ -143,6 +143,10 @@
       (%release ptr)
       (%close ptr))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(deftype parallel-port-line () `(array bit (8)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(deftype parallel-port-lines () `(array bit (3 8)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun bit-vector->ub8 (bit-vector)
   (loop
      :with int := #b00000000
@@ -159,19 +163,37 @@
      :finally (return bit-vector)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun read-data-lines (parallel-port &optional numberp)
+  "Return data parallel port lines status as bit-vector,
+   or as integer if `numberp' is T"
   (let ((data (%read-data-lines (parport-ptr parallel-port))))
     (if numberp data (ub8->bit-vector data))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun read-control-lines (parallel-port &optional numberp)
+  "As `read-data-lines', but for control lines."
   (let ((control (%%read-control-lines (parport-ptr parallel-port))))
     (if numberp control (ub8->bit-vector control))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun read-status-lines (parallel-port &optional numberp)
+  "As `read-data-lines', but for status lines."
   (let ((status (%read-status-lines (parport-ptr parallel-port))))
     (if numberp status (ub8->bit-vector status))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun read-lines (parallel-port)
-  (list (read-data-lines parallel-port)
-        (read-status-lines parallel-port)
-        (read-control-lines parallel-port)))
+  (make-array (list 3 8)
+              :element-type 'bit
+              :initial-contents 
+              (list (read-data-lines parallel-port)
+                    (read-status-lines parallel-port)
+                    (read-control-lines parallel-port))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun any->ub8 (any)
+  (if (integerp any)
+      any
+      (bit-vector->ub8 any)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun write-data-lines (parallel-port new-state)
+  (%write-data-lines (parport-ptr parallel-port) (any->ub8 new-state)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun write-control-lines (parallel-port new-state)
+  (%write-control-lines (parport-ptr parallel-port) (any->ub8 new-state)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

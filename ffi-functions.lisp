@@ -3,12 +3,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (in-package :iolib.ieee1284)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(eval-when (:compile-toplevel :load-toplevel)
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (define-foreign-library libieee1284
     (:unix (:or "libieee1284.so" "libieee1284.so.3"))
     (t (:default "libieee1284")))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  (use-foreign-library libieee1284))
+  (use-foreign-library libieee1284))    ;</ (eval-when
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcfun* (%find-ports "ieee1284_find_ports") e1284
   (parports :pointer)                   ;struct parports *list
