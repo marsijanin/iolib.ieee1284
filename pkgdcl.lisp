@@ -8,7 +8,7 @@
   (:nicknames #:coffe)
   (:use :common-lisp :cffi)
   (:import-from :iolib.syscalls :defcfun* :defentrypoint :size-t)
-  (:import-from :alexandria :with-unique-names)
+  (:import-from :alexandria :with-gensyms)
   (:export
    ;; C functions wrappers 
    #:%%read-status-lines 

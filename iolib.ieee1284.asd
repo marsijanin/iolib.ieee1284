@@ -14,6 +14,7 @@
   :components
   ((:file "pkgdcl")
    (cffi-grovel:grovel-file "ffi-types")
+   (:file "conditions")
    (:file "ffi-functions")
    (:file "wrappers")))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
