@@ -32,11 +32,12 @@
     (setf (parallel-port-capabilities-pointer parport) ptr)
     (trivial-garbage:finalize parport #'(lambda () (foreign-free ptr)))
     (when (slot-boundp parport 'pointers-to-parports)
-      (with-slots (pointers-to-parports) parport
+      (with-slots ((ptr pointers-to-parports)) parport
         (trivial-garbage:finalize parport
                                   #'(lambda ()
-                                      (%free-ports pointers-to-parports)
-                                      (foreign-free pointers-to-parports)))))))
+                                      (when ptr
+                                        (%free-ports ptr)
+                                        (foreign-free ptr))))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *parallel-ports* nil "List of all avaliable parallel ports")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -75,6 +76,17 @@
            (avaliable-parports (avaliable-parports-list ptr)))
       (when avaliable-parports
         (setf *parallel-ports* avaliable-parports)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun free-parallel-ports ()
+  "Setf call %free-ports and `*parallel-ports*' to nill"
+  (when *parallel-ports*
+    (with-slots ((ptr pointers-to-parports))
+        (car *parallel-ports*)
+      (when ptr
+        (%free-ports ptr)
+        (foreign-free ptr)
+        (setf ptr nil)))
+    (setf *parallel-ports* nil)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun name-or-base->parallel-port (name-or-base)
   (labels
@@ -167,9 +179,7 @@
          (progn
            (when (parallel-port-open-and-claim-p ,parallel-port-value)
              (close-parallel-port ,parallel-port-value))
-           (when *parallel-ports*
-             (%free-ports (parallel-port-pointers-to-parports
-                           (car *parallel-ports*)))))))))
+           (free-parallel-ports))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftype parallel-port-line () `(array bit (8)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
