@@ -112,6 +112,11 @@
     (when pp
       (values pp (parallel-port-parport-pointer pp)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun parport-ptr (thing)
+  (multiple-value-bind (pp ptr) (parport thing)
+    (declare (ignorable pp))
+    ptr))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun open-parallel-port (parallel-port &key (flags :excl) capabilities)
   "Lispish ieee1284_open & ieee1284_claim wrapper.
    `parallel-port' can be: parallel port (file)name, base address or
@@ -141,14 +146,30 @@
 (defun close-parallel-port (parallel-port)
   "Release and close `parallel-port' (`*parallel-ports*' element, (file)name
    or base address) opened by `open-parallel-port'"
-  (multiple-value-bind (pp ptr) (parport-ptr parallel-port)
+  (multiple-value-bind (pp ptr) (parport parallel-port)
     (when ptr
       (%release ptr)
       (%close ptr)
       (setf (parallel-port-open-and-claim-p pp) nil)
       pp)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+(defmacro with-parallel-port ((parallel-port-value parallel-port exclp
+                                                   &rest capabilities)
+                              &body body)
+  `(progn
+     (find-parallel-ports)
+     (let ((,parallel-port-value (name-or-base->parallel-port ,parallel-port)))
+       (unwind-protect (progn
+                         (open-parallel-port ,parallel-port-value
+                                             :flags ,(if exclp :excl 0)
+                                             :capabilities '(,@capabilities))
+                         ,@body)
+         (progn
+           (when (parallel-port-open-and-claim-p ,parallel-port-value)
+             (close-parallel-port ,parallel-port-value))
+           (when *parallel-ports*
+             (%free-ports (parallel-port-pointers-to-parports
+                           (car *parallel-ports*)))))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftype parallel-port-line () `(array bit (8)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
