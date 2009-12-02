@@ -37,7 +37,8 @@
                                   #'(lambda ()
                                       (when ptr
                                         (%free-ports ptr)
-                                        (foreign-free ptr))))))))
+                                        (foreign-free ptr)
+                                        (setf ptr nil))))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *parallel-ports* nil "List of all avaliable parallel ports")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -165,21 +166,38 @@
       (setf (parallel-port-open-and-claim-p pp) nil)
       pp)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmacro with-parallel-ports (binds &body body)
+  (let ((x (gensym "x")))
+    `(progn
+       (find-parallel-ports)
+       (let (,@(mapcar
+                #'(lambda (x)
+                    `(,(first x) (name-or-base->parallel-port ,(second x))))
+                binds))
+         (unwind-protect (progn
+                           ,@(mapcar
+                              #'(lambda (x)
+                                  `(open-parallel-port ,(first x)
+                                                       :flags
+                                                       ,(if (third x) :excl 0)
+                                                       :capabilities
+                                                       '(,@(cdddr x))))
+                              binds)
+                           ,@body)
+           (progn
+             (when *parallel-ports*
+               (mapcar #'(lambda (,x)
+                           (when (parallel-port-open-and-claim-p ,x)
+                             (close-parallel-port ,x)))
+                       *parallel-ports*)
+               (free-parallel-ports))))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro with-parallel-port ((parallel-port-value parallel-port exclp
                                                    &rest capabilities)
                               &body body)
-  `(progn
-     (find-parallel-ports)
-     (let ((,parallel-port-value (name-or-base->parallel-port ,parallel-port)))
-       (unwind-protect (progn
-                         (open-parallel-port ,parallel-port-value
-                                             :flags ,(if exclp :excl 0)
-                                             :capabilities '(,@capabilities))
-                         ,@body)
-         (progn
-           (when (parallel-port-open-and-claim-p ,parallel-port-value)
-             (close-parallel-port ,parallel-port-value))
-           (free-parallel-ports))))))
+  `(with-parallel-ports ((,parallel-port-value ,parallel-port
+                                               ,exclp ,@capabilities))
+     ,@body))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftype parallel-port-line () `(array bit (8)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
