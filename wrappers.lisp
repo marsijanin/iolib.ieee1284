@@ -78,12 +78,12 @@
                                       :pointers-to-parports pointers-to-parports
                                       :index i) :into parports
               :finally (when parports
-                         (return parports)))))))
-  (let* ((ptr (when *parallel-ports*
-                (parallel-port-pointers-to-parports (car *parallel-ports*))))
-         (avaliable-parports (avaliable-parports-list ptr)))
-    (when avaliable-parports
-      (setf *parallel-ports* avaliable-parports))))
+                         (return parports))))))
+    (let* ((ptr (when *parallel-ports*
+                  (parallel-port-pointers-to-parports (car *parallel-ports*))))
+           (avaliable-parports (avaliable-parports-list ptr)))
+      (when avaliable-parports
+        (setf *parallel-ports* avaliable-parports)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun free-parallel-ports ()
   "Call %free-ports and set `*parallel-ports*' to nill"
@@ -184,6 +184,19 @@
         pp))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro with-parallel-ports (binds &body body)
+  "`binds' - (pvalue parport exclp &rest capabilities)
+          `pvalue'  - value `existing-parallel-port' instance bind to;
+          `parport' - parallel port base address (i.e. #x378) of (file)name
+                      (i.e. \"parport0\" or \"/dev/parport0\");
+          `exclp'   - if T when `:excl' flag is passed to `open-parallel-port';
+          `capabilities*' - ieee1284_capabilities keywords list.
+   First `find-parallel-ports' will be called, next `pvalue's of all `binds'
+   will be bind to the corresponding `existing-parallel-port' instances,
+   body will be executed inside protected part of the `unwind-protect' macro.
+   Finally all opened parallel port will be closed and free-parallel-ports
+   will be called.
+  
+  "
   (let ((x (gensym "x")))
     `(progn
        (find-parallel-ports)
@@ -211,6 +224,7 @@
 (defmacro with-parallel-port ((parallel-port-value parallel-port exclp
                                                    &rest capabilities)
                               &body body)
+  "`with-parallel-ports' for one parallel port"
   `(with-parallel-ports ((,parallel-port-value ,parallel-port
                                                ,exclp ,@capabilities))
      ,@body))
