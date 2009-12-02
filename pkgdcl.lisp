@@ -53,5 +53,8 @@
    #:read-data-lines
    #:read-status-lines
    #:read-control-lines
-   #:read-lines))
+   #:read-lines
+   ;; `with` macro:
+   #:with-parallel-ports
+   #:with-parallel-port))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

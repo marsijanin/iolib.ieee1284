@@ -32,13 +32,20 @@
     (setf (parallel-port-capabilities-pointer parport) ptr)
     (trivial-garbage:finalize parport #'(lambda () (foreign-free ptr)))
     (when (slot-boundp parport 'pointers-to-parports)
-      (with-slots ((ptr pointers-to-parports)) parport
+      (with-slots ((ptr-to   pointers-to-parports)
+                   (cap      capabilities-pointer)
+                   (ptr-self parport-pointer)) parport
         (trivial-garbage:finalize parport
                                   #'(lambda ()
                                       (when ptr
                                         (%free-ports ptr)
                                         (foreign-free ptr)
-                                        (setf ptr nil))))))))
+                                        (setf ptr nil))
+                                      (when cap
+                                        (foreign-free cap)
+                                        (setf cap nil))
+                                      (when ptr-self ;free by %free-ports
+                                        (setf ptr-self nil))))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defparameter *parallel-ports* nil "List of all avaliable parallel ports")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47,7 +54,7 @@
 ;; and pass pointer to ieee1284_open it will case segfault or another error
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun find-parallel-ports ()
-  "Setf `*parallel-ports*' to the list of avaliable parallel ports
+  "Set `*parallel-ports*' to the list of avaliable parallel ports
    if cat find some and return it."
   (labels
       ((avaliable-parports-list (pointers-to-parports)
@@ -57,29 +64,29 @@
              ;; first call - need to allocate memory first
              (setf pointers-to-parports
                    (foreign-alloc 'pointers-to-parports)))
-         (when (eql (%find-ports pointers-to-parports 0) :ok)
-           (with-foreign-slots ((portc portv)
-                                pointers-to-parports
-                                pointers-to-parports)
-             (loop
-                :for i :below portc 
-                ;; `:pointer' in mem-aref is `type' parameter value
-                :for ptr := (mem-aref portv :pointer i)
-                :collect (make-instance 'existing-parallel-port
-                                        :pointer ptr
-                                        :parport-pointer ptr
-                                        :pointers-to-parports pointers-to-parports
-                                        :index i) :into parports
-                :finally (when parports
-                          (return parports)))))))
-    (let* ((ptr (when *parallel-ports*
-                  (parallel-port-pointers-to-parports (car *parallel-ports*))))
-           (avaliable-parports (avaliable-parports-list ptr)))
-      (when avaliable-parports
-        (setf *parallel-ports* avaliable-parports)))))
+         (%find-ports pointers-to-parports 0)
+         (with-foreign-slots ((portc portv)
+                              pointers-to-parports
+                              pointers-to-parports)
+           (loop
+              :for i :below portc 
+              ;; `:pointer' in mem-aref is `type' parameter value
+              :for ptr := (mem-aref portv :pointer i)
+              :collect (make-instance 'existing-parallel-port
+                                      :pointer ptr
+                                      :parport-pointer ptr
+                                      :pointers-to-parports pointers-to-parports
+                                      :index i) :into parports
+              :finally (when parports
+                         (return parports)))))))
+  (let* ((ptr (when *parallel-ports*
+                (parallel-port-pointers-to-parports (car *parallel-ports*))))
+         (avaliable-parports (avaliable-parports-list ptr)))
+    (when avaliable-parports
+      (setf *parallel-ports* avaliable-parports))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun free-parallel-ports ()
-  "Setf call %free-ports and `*parallel-ports*' to nill"
+  "Call %free-ports and set `*parallel-ports*' to nill"
   (when *parallel-ports*
     (with-slots ((ptr pointers-to-parports))
         (car *parallel-ports*)
@@ -87,6 +94,15 @@
         (%free-ports ptr)
         (foreign-free ptr)
         (setf ptr nil)))
+    (mapcar #'(lambda (x)
+                (with-slots ((cap capabilities-pointer)
+                             (ptr parport-pointer)) x
+                  (when cap
+                    (foreign-free cap)
+                    (setf cap nil))
+                  (when ptr             ;free by %free-ports
+                    (setf ptr nil))))
+            *parallel-ports*)
     (setf *parallel-ports* nil)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun name-or-base->parallel-port (name-or-base)
@@ -161,10 +177,11 @@
    or base address) opened by `open-parallel-port'"
   (multiple-value-bind (pp ptr) (parport parallel-port)
     (when ptr
-      (%release ptr)
-      (%close ptr)
-      (setf (parallel-port-open-and-claim-p pp) nil)
-      pp)))
+      (when (parallel-port-open-and-claim-p pp)
+        (%release ptr)
+        (%close ptr)
+        (setf (parallel-port-open-and-claim-p pp) nil)
+        pp))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro with-parallel-ports (binds &body body)
   (let ((x (gensym "x")))
@@ -174,16 +191,15 @@
                 #'(lambda (x)
                     `(,(first x) (name-or-base->parallel-port ,(second x))))
                 binds))
-         (unwind-protect (progn
-                           ,@(mapcar
-                              #'(lambda (x)
-                                  `(open-parallel-port ,(first x)
-                                                       :flags
-                                                       ,(if (third x) :excl 0)
-                                                       :capabilities
-                                                       '(,@(cdddr x))))
-                              binds)
-                           ,@body)
+         (unwind-protect
+              (progn
+                ,@(mapcar
+                   #'(lambda (x)
+                       `(open-parallel-port ,(first x)
+                                            :flags ,(if (third x) :excl 0)
+                                            :capabilities '(,@(cdddr x))))
+                   binds)
+                ,@body)
            (progn
              (when *parallel-ports*
                (mapcar #'(lambda (,x)
