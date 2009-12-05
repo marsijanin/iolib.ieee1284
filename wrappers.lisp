@@ -265,6 +265,7 @@
     (if numberp status (ub8->bit-vector status))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun read-lines (parallel-port)
+  "#2A((<data>) (<status>) (<control>))"
   (make-array (list 3 8)
               :element-type 'bit
               :initial-contents 
@@ -278,8 +279,10 @@
       (bit-vector->ub8 any)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun write-data-lines (parallel-port new-state)
+  "New state can be (integer 0 #xff) or (array bit (8))"
   (%write-data-lines (parport-ptr parallel-port) (any->ub8 new-state)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun write-control-lines (parallel-port new-state)
+  "New state can be (integer 0 #xff) or (array bit (8))"
   (%write-control-lines (parport-ptr parallel-port) (any->ub8 new-state)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
