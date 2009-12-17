@@ -54,6 +54,8 @@
    #:read-status-lines
    #:read-control-lines
    #:read-lines
+   #:write-data-lines
+   #:write-control-lines
    ;; `with` macro:
    #:with-parallel-ports
    #:with-parallel-port))

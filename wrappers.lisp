@@ -264,13 +264,12 @@
   (let ((status (%read-status-lines (parport-ptr parallel-port))))
     (if numberp status (ub8->bit-vector status))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun read-lines (parallel-port)
-  (make-array (list 3 8)
-              :element-type 'bit
-              :initial-contents 
-              (list (read-data-lines parallel-port)
-                    (read-status-lines parallel-port)
-                    (read-control-lines parallel-port))))
+(defun read-lines (parallel-port &optional numberp)
+  (make-array (if numberp 3 (list 3 8))
+              :element-type (if numberp '(unsigned-byte 8) 'bit)
+              :initial-contents (list (read-data-lines parallel-port numberp)
+                                      (read-status-lines parallel-port numberp)
+                                      (read-control-lines parallel-port numberp))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun any->ub8 (any)
   (if (integerp any)
