@@ -58,5 +58,5 @@
    #:write-control-lines
    ;; `with` macro:
    #:with-parallel-ports
-   #:with-parallel-port))
+   #:with-parallel-port))		;</defpackage>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
