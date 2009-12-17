@@ -206,6 +206,14 @@
                 binds))
          (unwind-protect
               (progn
+                ;; Checking that all user definded parport variables have
+                ;; bindings and signal the `ieee1284-invalidport-error`
+                ;; if they not => no such parport were found
+                ,@(mapcar #'(lambda (x)
+                              `(unless ,(first x)
+                                 (error 'ieee1284-invalidport-error
+                                        :parport ,(second x))))
+                          binds)
                 ,@(mapcar
                    #'(lambda (x)
                        `(open-parallel-port ,(first x)

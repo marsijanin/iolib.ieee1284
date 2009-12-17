@@ -27,17 +27,21 @@
     (:simple-parser e1284-st))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (define-condition ieee1284-error (simple-error)
-    ())
+    ((parport :reader ieee1284-error-parport :initarg :parport)))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (macrolet
       ((define-ieee1284-conditions ()
-	 (with-gensyms (stream condition)
+	 (with-gensyms (stream condition p)
 	   `(progn ,@(mapcar #'(lambda (name doc)
 				 `(define-condition ,name (ieee1284-error)
 				    ()
-				    (:report (lambda (,condition ,stream)
-					       (declare (ignorable ,condition))
-					       (format ,stream ,doc)))))
+				    (:report
+                                     (lambda (,condition ,stream)
+                                       (with-accessors 
+                                             ((,p ieee1284-error-parport))
+                                           ,condition
+                                         (format ,stream "~a ~:[~;~a~]"
+                                                 ,doc ,p ,p))))))
 			     *error-condirions-names*
 			     (remove-if #'keywordp *error-stats-docs*))))))
     (define-ieee1284-conditions))
