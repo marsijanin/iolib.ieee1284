@@ -262,23 +262,57 @@
   (let ((data (%read-data-lines (parport-ptr parallel-port))))
     (if numberp data (ub8->bit-vector data))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun read-control-lines (parallel-port &optional numberp)
-  "As `read-data-lines', but for control lines."
-  (let ((control (%%read-control-lines (parport-ptr parallel-port))))
-    (if numberp control (ub8->bit-vector control))))
+(defun read-control-lines (parallel-port &optional (type 'list))
+  "'list    => (:NSTROBE :NAUTOFD :NINIT :NSELECTIN :INVERTED)
+   'vector  => #*11100000
+   'integer => 7
+  "
+  (multiple-value-bind (lst int)
+      (%read-control-lines (parallel-port-parport-pointer parallel-port))
+    (case type
+      (list lst)
+      (vector (ub8->bit-vector int))
+      (integer int)
+      (error "Returning type should be one of: 'integer, 'vector, 'list!"))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun read-status-lines (parallel-port &optional numberp)
-  "As `read-data-lines', but for status lines."
-  (let ((status (%read-status-lines (parport-ptr parallel-port))))
-    (if numberp status (ub8->bit-vector status))))
+(defun read-status-lines (parallel-port &optional (type 'list))
+  "As `read-status-lines', but for status lines."
+  (multiple-value-bind (lst int)
+      (%read-status-lines (parallel-port-parport-pointer parallel-port))
+    (case type
+      (list lst)
+      (vector (ub8->bit-vector int))
+      (integer int)
+      (error "Returning type should be one of: 'integer, 'vector, 'list!"))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun read-lines (parallel-port &optional numberp)
-  "#2A((<data>) (<status>) (<control>)) or #(data status control)"
-  (make-array (if numberp 3 (list 3 8))
-              :element-type (if numberp '(unsigned-byte 8) 'bit)
-              :initial-contents (list (read-data-lines parallel-port numberp)
-                                      (read-status-lines parallel-port numberp)
-                                      (read-control-lines parallel-port numberp))))
+(defun read-lines (parallel-port &optional (type 'list))
+  "'array  => #2A((0 0 1 0 0 0 0 0) (1 1 1 1 1 1 1 1) (1 1 1 0 0 0 0 0))
+   'list   => (4
+               (:NFAULT  :SELECT  :PERROR :NACK      :BUSY :INVERTED)
+               (:NSTROBE :NAUTOFD :NINIT  :NSELECTIN :INVERTED))
+   'vector => #(4 255 7)"
+  (unless (member type '(list array vector))
+    (error "Returning type should be one of: 'integer, 'vector, 'list!"))
+  (let ((data    (read-data-lines    parallel-port (or (eql type 'vector)
+                                                       (eql type 'list))))
+        (status  (read-status-lines  parallel-port (case type
+                                                     (list   'list)
+                                                     (array  'vector)
+                                                     (vector 'integer))))
+        (control (read-control-lines parallel-port (case type
+                                                     (list   'list)
+                                                     (array  'vector)
+                                                     (vector 'integer)))))
+    (case type
+      ((or array vector)
+       (make-array (if (eql type 'vector)
+                       3
+                       (list 3 8))
+                   :element-type (if (eql type 'vector)
+                                     '(unsigned-byte 8)
+                                     'bit)
+                   :initial-contents (list data status control)))
+      (list (list data status control)))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun any->ub8 (any)
   (if (integerp any)

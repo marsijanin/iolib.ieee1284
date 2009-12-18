@@ -54,14 +54,23 @@
   (val     :uchar)
   (timeout :pointer))                   ;struct timeval *
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; ieee1284_status/control_bits do not cover all 255 values and
-;; `foreign-enum-keyword' can signal an error in raw mode.
-(defcfun* (%%read-status-lines "ieee1284_read_status") :int
+;; ieee1284_status/control_bits used to represent 5/4 status/control lines
+;; instand of returning corresponding register value
+;; So I'm using expand-from-foreign methods and returning pins keywords list
+(define-foreign-type ieee1284-status-lines ()
+  ()
+  (:actual-type :int)
+  (:simple-parser status-lines))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defmethod expand-from-foreign (value (type ieee1284-status-lines))
+  (with-gensyms (retval pin-name pin-value)
+    `(loop with ,retval = ,value
+        for ,pin-name in (foreign-enum-keyword-list 'ieee1284_status_bits)
+        for ,pin-value = (foreign-enum-value 'ieee1284_status_bits ,pin-name)
+        when (logand ,pin-value ,retval) collect ,pin-name)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defcfun* (%read-status-lines "ieee1284_read_status") status-lines
   (parport :pointer))                   ;struct parport *
-(defentrypoint %read-status-lines (pointer)
-  (let ((status (%%read-status-lines pointer)))
-    (or (foreign-enum-keyword 'ieee1284_status_bits status :errorp nil)
-        status)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcfun* (%wait-status-lines "ieee1284_wait_status") e1284-st
   (parport :pointer)                    ;struct parport *
