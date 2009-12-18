@@ -146,7 +146,8 @@
     (declare (ignorable pp))
     ptr))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun open-parallel-port (parallel-port &key (flags :excl) capabilities)
+(defun open-parallel-port (parallel-port &key (flags '(:excl))
+                           (capabilities '(:raw)))
   "Lispish ieee1284_open & ieee1284_claim wrapper.
    `parallel-port' can be: parallel port (file)name, base address or
    `*parallel-ports* element. `flags' can be `:excl' or 0 (unless whre will be
@@ -167,7 +168,15 @@
                                    (foreign-enum-value 'ieee1284_capabilities
                                                        x))
                                capabilities))))
-        (%open ptr flags (if capabilities cap (null-pointer)))
+        (%open ptr
+               (if flags
+                   (reduce #'logior
+                           (mapcar
+                            #'(lambda (x)
+                                (foreign-enum-value 'ieee1284_open_flags x))
+                            flags))
+                   0)
+               (if capabilities cap (null-pointer)))
         (%claim ptr)
         (setf oncp t)
         parport))))
@@ -184,12 +193,12 @@
         pp))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defmacro with-parallel-ports (binds &body body)
-  "`binds' - (pvalue parport exclp &rest capabilities)
+  "`binds' - (pvalue parport &key (flags '(:excl)) capabilities)
           `pvalue'  - value `existing-parallel-port' instance bind to;
           `parport' - parallel port base address (i.e. #x378) of (file)name
                       (i.e. \"parport0\" or \"/dev/parport0\");
-          `exclp'   - if T when `:excl' flag is passed to `open-parallel-port';
-          `capabilities*' - ieee1284_capabilities keywords list.
+          `flags'   - ieee1284_open_flags keywords list or nil;
+          `capabilities*' - ieee1284_capabilities keywords list or nil.
    First `find-parallel-ports' will be called, next `pvalue's of all `binds'
    will be bind to the corresponding `existing-parallel-port' instances,
    body will be executed inside protected part of the `unwind-protect' macro.
@@ -216,9 +225,11 @@
                           binds)
                 ,@(mapcar
                    #'(lambda (x)
-                       `(open-parallel-port ,(first x)
-                                            :flags ,(if (third x) :excl 0)
-                                            :capabilities '(,@(cdddr x))))
+                       (let ((flags (getf x :flags))
+                             (cap   (getf x :capabilities)))
+                         `(open-parallel-port ,(first x)
+                                              :flags '(,@(or flags '(:excl)))
+                                              :capabilities ,cap)))
                    binds)
                 ,@body)
            (progn
@@ -229,12 +240,14 @@
                        *parallel-ports*)
                (free-parallel-ports))))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro with-parallel-port ((parallel-port-value parallel-port exclp
-                                                   &rest capabilities)
+(defmacro with-parallel-port ((parallel-port-value parallel-port 
+                                                   &key (flags '(:excl))
+                                                   capabilities)
                               &body body)
   "`with-parallel-ports' for one parallel port"
   `(with-parallel-ports ((,parallel-port-value ,parallel-port
-                                               ,exclp ,@capabilities))
+                                               :flags ,flags
+                                               :capabilities ,capabilities))
      ,@body))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (deftype parallel-port-line () `(array bit (8)))
