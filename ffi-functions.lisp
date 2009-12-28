@@ -60,6 +60,19 @@
 ;; and pins keywords list and pins codes
 ;; Wrapping into `eval-when` is needed because enums keywords lists for
 ;; status/control lines are unknown before grovel-tmp files processing
+#|(defmacro define-bitenum-expander (typename enumname)
+  (with-gensyms (value type retval idx int key keys)
+    `(defmethod expand-from-foreign (,value (,type ,typename))
+       (loop
+          :with ,retval := ,value
+          :for ,idx :below (integer-length ,retval)
+          :for ,int := (when (logbitp ,idx ,retval)
+                         (dpb 1 (byte 1 ,idx) 0))
+          :for ,key := (when ,int
+                         (foreign-enum-keyword ',enumname ,int :errorp nil))
+          :when ,key :collect ,key :into ,keys
+          :finally (return (values ,keys ,retval))))))|#
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (eval-when (:compile-toplevel :load-toplevel) 
   (define-foreign-type ieee1284-status-lines ()
     ()
@@ -67,12 +80,24 @@
     (:simple-parser status-lines))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (defmethod expand-from-foreign (value (type ieee1284-status-lines))
-    (with-gensyms (retval pin-name pin-value pin-lst)
-      `(loop with ,retval = ,value
+    (with-gensyms #|(retval pin-name pin-value pin-lst)|#
+        (retval idx int key keys)
+      #|(loop with ,retval = ,value
           for ,pin-name in (foreign-enum-keyword-list 'ieee1284_status_bits)
           for ,pin-value = (foreign-enum-value 'ieee1284_status_bits ,pin-name)
           when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
-          finally (return (values ,pin-lst ,retval)))))
+          finally (return (values ,pin-lst ,retval)))|#
+      `(loop
+          :with ,retval := ,value
+          :for ,idx :below (integer-length ,retval)
+          :for ,int := (when (logbitp ,idx ,retval)
+                         (dpb 1 (byte 1 ,idx) 0))
+          :for ,key := (when ,int
+                         (foreign-enum-keyword 'ieee1284_status_bits ,int
+                                               :errorp nil))
+          :when ,key :collect ,key :into ,keys
+          :finally (return (values ,keys ,retval)))))
+  #|(define-bitenum-expander ieee1284-status-lines ieee1284_status_bits)|#
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (defcfun* (%read-status-lines "ieee1284_read_status") status-lines
     (parport :pointer))                   ;struct parport *
@@ -89,12 +114,24 @@
     (:simple-parser control-lines))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (defmethod expand-from-foreign (value (type ieee1284-control-lines))
-    (with-gensyms (retval pin-name pin-value pin-lst)
-      `(loop with ,retval = ,value
+    (with-gensyms #|(retval pin-name pin-value pin-lst)|#
+        (retval idx int key keys)
+      #|(loop with ,retval = ,value
           for ,pin-name in (foreign-enum-keyword-list 'ieee1284_control_bits)
           for ,pin-value = (foreign-enum-value 'ieee1284_control_bits ,pin-name)
           when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
-          finally (return (values ,pin-lst ,retval)))))
+          finally (return (values ,pin-lst ,retval)))|#
+      `(loop
+          :with ,retval := ,value
+          :for ,idx :below (integer-length ,retval)
+          :for ,int := (when (logbitp ,idx ,retval)
+                         (dpb 1 (byte 1 ,idx) 0))
+          :for ,key := (when ,int
+                         (foreign-enum-keyword 'ieee1284_control_bits ,int
+                                               :errorp nil))
+          :when ,key :collect ,key :into ,keys
+          :finally (return (values ,keys ,retval)))))
+  #|(define-bitenum-expander ieee1284-control-lines ieee1284_control_bits)|#
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (defcfun* (%read-control-lines "ieee1284_read_control") control-lines
     (parport :pointer)))                   ;struct parport * and </eval-when>
