@@ -58,43 +58,46 @@
 ;; instand of returning corresponding register value
 ;; So I'm using expand-from-foreign methods and returning
 ;; and pins keywords list and pins codes
-(define-foreign-type ieee1284-status-lines ()
-  ()
-  (:actual-type :int)
-  (:simple-parser status-lines))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmethod expand-from-foreign (value (type ieee1284-status-lines))
-  (with-gensyms (retval pin-name pin-value pin-lst)
-    `(loop with ,retval = ,value
-        for ,pin-name in (foreign-enum-keyword-list 'ieee1284_status_bits)
-        for ,pin-value = (foreign-enum-value 'ieee1284_status_bits ,pin-name)
-        when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
-        finally (return (values ,pin-lst ,retval)))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcfun* (%read-status-lines "ieee1284_read_status") status-lines
-  (parport :pointer))                   ;struct parport *
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcfun* (%wait-status-lines "ieee1284_wait_status") e1284-st
-  (parport :pointer)                    ;struct parport *
-  (mask    :uchar)
-  (val     :uchar)
-  (timeout :pointer))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define-foreign-type ieee1284-control-lines ()
-  ()
-  (:actual-type :int)
-  (:simple-parser control-lines))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmethod expand-from-foreign (value (type ieee1284-control-lines))
-  (with-gensyms (retval pin-name pin-value pin-lst)
-    `(loop with ,retval = ,value
-        for ,pin-name in (foreign-enum-keyword-list 'ieee1284_control_bits)
-        for ,pin-value = (foreign-enum-value 'ieee1284_control_bits ,pin-name)
-        when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
-        finally (return (values ,pin-lst ,retval)))))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defcfun* (%read-control-lines "ieee1284_read_control") control-lines
-  (parport :pointer))                   ;struct parport *
+;; Wrapping into `eval-when` is needed because enums keywords lists for
+;; status/control lines are unknown before grovel-tmp files processing
+(eval-when (:compile-toplevel :load-toplevel) 
+  (define-foreign-type ieee1284-status-lines ()
+    ()
+    (:actual-type :int)
+    (:simple-parser status-lines))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defmethod expand-from-foreign (value (type ieee1284-status-lines))
+    (with-gensyms (retval pin-name pin-value pin-lst)
+      `(loop with ,retval = ,value
+          for ,pin-name in (foreign-enum-keyword-list 'ieee1284_status_bits)
+          for ,pin-value = (foreign-enum-value 'ieee1284_status_bits ,pin-name)
+          when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
+          finally (return (values ,pin-lst ,retval)))))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defcfun* (%read-status-lines "ieee1284_read_status") status-lines
+    (parport :pointer))                   ;struct parport *
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defcfun* (%wait-status-lines "ieee1284_wait_status") e1284-st
+    (parport :pointer)                    ;struct parport *
+    (mask    :uchar)
+    (val     :uchar)
+    (timeout :pointer))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (define-foreign-type ieee1284-control-lines ()
+    ()
+    (:actual-type :int)
+    (:simple-parser control-lines))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defmethod expand-from-foreign (value (type ieee1284-control-lines))
+    (with-gensyms (retval pin-name pin-value pin-lst)
+      `(loop with ,retval = ,value
+          for ,pin-name in (foreign-enum-keyword-list 'ieee1284_control_bits)
+          for ,pin-value = (foreign-enum-value 'ieee1284_control_bits ,pin-name)
+          when (logand ,pin-value ,retval) collect ,pin-name into ,pin-lst
+          finally (return (values ,pin-lst ,retval)))))
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defcfun* (%read-control-lines "ieee1284_read_control") control-lines
+    (parport :pointer)))                   ;struct parport * and </eval-when>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defcfun* (%write-control-lines "ieee1284_write_control") :void
   (parport  :pointer)                   ;struct parport *
