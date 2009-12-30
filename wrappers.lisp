@@ -101,7 +101,8 @@
                     (foreign-free cap)
                     (setf cap nil))
                   (when ptr             ;free by %free-ports
-                    (setf ptr nil))))
+                    (setf ptr nil)))
+                (trivial-garbage:cancel-finalization x))
             *parallel-ports*)
     (setf *parallel-ports* nil)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
